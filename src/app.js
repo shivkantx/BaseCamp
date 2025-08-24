@@ -8,10 +8,6 @@ app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 
-app.get("/", (req, res) => {
-  res.send("Welcome to basecampy");
-});
-
 // cors configurations
 app.use(
   cors({
@@ -21,5 +17,14 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+// import routes
+import healthCheckRouter from "./routes/healthcheck.routes.js";
+
+app.use("/api/v1/healthcheck", healthCheckRouter);
+
+app.get("/", (req, res) => {
+  res.send("Welcome to basecampy");
+});
 
 export default app;
