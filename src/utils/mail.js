@@ -1,6 +1,51 @@
 import Mailgen from "mailgen";
+import nodemailer from "nodemailer";
 
-// Email Verification Template
+// 📤 Send Email Function
+const sendEmail = async (options) => {
+  const mailGenerator = new Mailgen({
+    theme: "default",
+    product: {
+      name: "Task Manager",
+      link: "https://taskmanagelink.com",
+    },
+  });
+
+  // Generate email content
+  const emailTextual = mailGenerator.generatePlaintext(options.mailgenContent);
+  const emailHtml = mailGenerator.generate(options.mailgenContent);
+
+  // Configure transporter
+  const transporter = nodemailer.createTransport({
+    host: process.env.MAILTRAP_SMTP_HOST,
+    port: process.env.MAILTRAP_SMTP_PORT,
+    auth: {
+      user: process.env.MAILTRAP_SMTP_USER,
+      pass: process.env.MAILTRAP_SMTP_PASS,
+    },
+  });
+
+  const mail = {
+    from: "mail.taskmanager@example.com",
+    to: options.email,
+    subject: options.subject,
+    text: emailTextual,
+    html: emailHtml,
+  };
+
+  try {
+    await transporter.sendMail(mail);
+    console.log(`✅ Email sent to ${options.email}`);
+  } catch (error) {
+    console.error(
+      "❌ Email service failed. Check your MAILTRAP credentials in the .env file.",
+    );
+    console.error(error);
+    throw new Error("Email sending failed"); // Important: propagate error
+  }
+};
+
+// 📩 Email Verification Template
 const emailVerificationMailgenContent = (username, verificationUrl) => {
   return {
     body: {
@@ -20,7 +65,7 @@ const emailVerificationMailgenContent = (username, verificationUrl) => {
   };
 };
 
-//  Forgot Password Template
+// 🔑 Forgot Password Template
 const forgotPasswordMailgenContent = (username, passwordResetUrl) => {
   return {
     body: {
@@ -40,4 +85,8 @@ const forgotPasswordMailgenContent = (username, passwordResetUrl) => {
   };
 };
 
-export { emailVerificationMailgenContent, forgotPasswordMailgenContent };
+export {
+  emailVerificationMailgenContent,
+  forgotPasswordMailgenContent,
+  sendEmail,
+};
