@@ -109,7 +109,7 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-// ⏳ Generate temporary tokens (for reset/verify)
+//  Generate temporary tokens (for reset/verify)
 userSchema.methods.generateTemporaryToken = function () {
   const unHashedToken = crypto.randomBytes(20).toString("hex");
 
