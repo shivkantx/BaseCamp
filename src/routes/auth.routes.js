@@ -1,3 +1,4 @@
+// all routes are noyt working redebug
 import { Router } from "express";
 import {
   registerUser,
