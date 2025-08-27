@@ -29,4 +29,32 @@ const userLoginValidator = () => {
   body("username").notEmpty().withMessage("Username is required");
 };
 
-export { userRegisterValidator, userLoginValidator };
+const userChangeCurrentPasswordvalidator = () => {
+  return [
+    body("oldPassword").notEmpty().withMessage("Old password is required"),
+    body("newPassword").notEmpty().withMessage("New password is required"),
+  ];
+};
+
+const userForgotPasswordValidator = () => {
+  return [
+    body("email")
+      .notEmpty()
+      .withMessage("Email is required")
+      .isEmail()
+      .withMessage("Email is invalid"),
+  ];
+};
+
+const userResetForgotPasswordValidator = () => {
+  return [
+    body("newPassword").notEmpty().withMessage("New password is required"),
+  ];
+};
+export {
+  userRegisterValidator,
+  userLoginValidator,
+  userChangeCurrentPasswordvalidator,
+  userForgotPasswordValidator,
+  userResetForgotPasswordValidator,
+};
