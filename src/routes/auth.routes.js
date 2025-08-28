@@ -1,4 +1,3 @@
-// all routes are noyt working redebug
 import { Router } from "express";
 import {
   registerUser,
@@ -26,37 +25,34 @@ import {
 
 const router = Router();
 
-// unsecured routes
-router.route("/register").post(userRegisterValidator(), validate, registerUser);
-router.route("/login").post(userLoginValidator(), validate, login);
-router.route("/verify-email/:verificationToken").get(verifyEmail);
+// Public routes (no auth required)
+router.post("/register", userRegisterValidator(), validate, registerUser);
+router.post("/login", userLoginValidator(), validate, login);
+router.get("/verify-email/:verificationToken", verifyEmail);
+router.post(
+  "/forgot-password",
+  userForgotPasswordValidator(),
+  validate,
+  forgotPasswordRequest,
+);
+router.post(
+  "/reset-password/:resetToken",
+  userResetForgotPasswordValidator(),
+  validate,
+  resetForgotPassword,
+);
+router.post("/refresh-token", refreshAccessToken);
 
-// resend email verification (secured)
-router
-  .route("/resend-email-verification")
-  .post(verifyJWT, resendEmailVerification);
-
-// secured routes
-router.route("/logout").post(verifyJWT, logoutUser);
-router.route("/refresh-token").post(refreshAccessToken);
-router
-  .route("/forgot-password")
-  .post(userForgotPasswordValidator(), validate, forgotPasswordRequest);
-router
-  .route("/reset-password/:resetToken")
-  .post(userResetForgotPasswordValidator(), validate, resetForgotPassword);
-
-// change password (protected)
-router
-  .route("/change-password")
-  .post(
-    verifyJWT,
-    userChangeCurrentPasswordValidator(),
-    validate,
-    changeCurrentPassword,
-  );
-
-//  get current user (protected)
-router.route("/current-user").get(verifyJWT, getCurrentUser);
+// Protected routes (auth required)
+router.post("/logout", verifyJWT, logoutUser);
+router.post("/resend-email-verification", verifyJWT, resendEmailVerification);
+router.post(
+  "/change-password",
+  verifyJWT,
+  userChangeCurrentPasswordValidator(),
+  validate,
+  changeCurrentPassword,
+);
+router.get("/current-user", verifyJWT, getCurrentUser);
 
 export default router;

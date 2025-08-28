@@ -3,17 +3,19 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
+const avatarSchema = new Schema(
+  {
+    url: { type: String, default: "https://placehold.co/200x200" },
+    localPath: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
 const userSchema = new Schema(
   {
     avatar: {
-      type: {
-        url: String,
-        localPath: String,
-      },
-      default: {
-        url: `https://placehold.co/200x200`,
-        localPath: "",
-      },
+      type: avatarSchema,
+      default: () => ({}),
     },
 
     username: {
@@ -73,19 +75,19 @@ const userSchema = new Schema(
   },
 );
 
-//  Hash password before saving
+// 🔒 Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10); // fixed
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-//  Compare entered password with stored hash
+// 🔑 Compare entered password with stored hash
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-//  Access Token
+// 🔑 Generate Access Token
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
@@ -98,7 +100,7 @@ userSchema.methods.generateAccessToken = function () {
   );
 };
 
-// Refresh Token
+// 🔑 Generate Refresh Token
 userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {
@@ -109,7 +111,7 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-//  Generate temporary tokens (for reset/verify)
+// 🔑 Generate temporary tokens (for reset/verify)
 userSchema.methods.generateTemporaryToken = function () {
   const unHashedToken = crypto.randomBytes(20).toString("hex");
 

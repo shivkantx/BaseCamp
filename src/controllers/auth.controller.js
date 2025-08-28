@@ -33,7 +33,7 @@ const generateAccessAndRefreshToken = async (userId) => {
  * Register new user
  */
 const registerUser = asyncHandler(async (req, res) => {
-  const { email, username, password, role } = req.body;
+  const { email, username, password, fullName } = req.body;
 
   const existedUser = await User.findOne({
     $or: [{ username }, { email }],
@@ -47,7 +47,7 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     username,
-    role,
+    fullName,
     isEmailVerified: false,
   });
 
@@ -65,7 +65,7 @@ const registerUser = asyncHandler(async (req, res) => {
       subject: "Please verify your email",
       mailgenContent: emailVerificationMailgenContent(
         user.username,
-        `${req.protocol}://${req.get("host")}/api/v1/users/verify-email/${unHashedToken}`,
+        `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`, // fixed path
       ),
     });
   } catch (err) {
@@ -78,10 +78,6 @@ const registerUser = asyncHandler(async (req, res) => {
   const createdUser = await User.findById(user._id).select(
     "-password -refreshToken -emailVerificationToken -emailVerificationExpiry",
   );
-
-  if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering user");
-  }
 
   return res
     .status(201)
@@ -105,16 +101,19 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ $or: [{ email }, { username }] });
-
   if (!user) {
     throw new ApiError(400, "User does not exist");
   }
 
   const isPasswordValid = await user.isPasswordCorrect(password);
-
   if (!isPasswordValid) {
     throw new ApiError(400, "Invalid credentials");
   }
+
+  // optional: block login until email verified
+  // if (!user.isEmailVerified) {
+  //   throw new ApiError(403, "Please verify your email before logging in");
+  // }
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
     user._id,
@@ -137,11 +136,7 @@ const login = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        {
-          user: loggedInUser,
-          accessToken,
-          refreshToken,
-        },
+        { user: loggedInUser, accessToken, refreshToken },
         "User logged in successfully",
       ),
     );
@@ -241,7 +236,7 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
     subject: "Please verify your email",
     mailgenContent: emailVerificationMailgenContent(
       user.username,
-      `${req.protocol}://${req.get("host")}/api/v1/users/verify-email/${unHashedToken}`,
+      `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`, // fixed path
     ),
   });
 
@@ -278,21 +273,18 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       throw new ApiError(401, "Invalid refresh token");
     }
 
-    if (incomingRefreshToken !== user?.refreshToken) {
+    if (incomingRefreshToken !== user.refreshToken) {
       throw new ApiError(401, "Refresh token has expired or is invalid");
     }
+
+    const { accessToken, refreshToken: newRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
 
     const options = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     };
-
-    const { accessToken, refreshToken: newRefreshToken } =
-      await generateAccessAndRefreshToken(user._id);
-
-    user.refreshToken = newRefreshToken;
-    await user.save();
 
     return res
       .status(200)
@@ -375,7 +367,7 @@ const resetForgotPassword = asyncHandler(async (req, res) => {
   user.forgotPasswordToken = undefined;
   user.password = newPassword;
 
-  await user.save({ validateBeforeSave: false });
+  await user.save(); // ensure password hashing runs
 
   return res
     .status(200)
@@ -389,7 +381,6 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
   const user = await User.findById(req.user?._id);
-
   if (!user) {
     throw new ApiError(404, "User not found");
   }
@@ -400,7 +391,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   }
 
   user.password = newPassword;
-  await user.save({ validateBeforeSave: false });
+  await user.save(); // ensure password hashing runs
 
   return res
     .status(200)
