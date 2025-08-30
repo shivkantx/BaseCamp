@@ -184,14 +184,9 @@ const verifyEmail = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Email verification token is missing");
   }
 
-  const hashedToken = crypto
-    .createHash("sha256")
-    .update(verificationToken)
-    .digest("hex");
-
   const user = await User.findOne({
-    emailVerificationToken: hashedToken,
-    emailVerificationExpiry: { $gt: Date.now() },
+    emailVerificationToken: verificationToken,
+    emailVerificationExpiry: { $gt: new Date() },
   });
 
   if (!user) {
@@ -308,23 +303,25 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
+  // Find user by email
   const user = await User.findOne({ email });
-
   if (!user) {
     throw new ApiError(404, "User does not exist");
   }
 
+  // Generate new temporary token
   const { unHashedToken, hashedToken, tokenExpiry } =
     user.generateTemporaryToken();
 
+  // Store the new token and expiry on the user
   user.forgotPasswordToken = hashedToken;
   user.forgotPasswordExpiry = tokenExpiry;
-
   await user.save({ validateBeforeSave: false });
 
+  // Send email with the new reset password link
   await sendEmail({
     email: user.email,
-    subject: "Password reset request",
+    subject: "Password reset link refreshed",
     mailgenContent: forgotPasswordMailgenContent(
       user.username,
       `${process.env.FORGOT_PASSWORD_REDIRECT_URL}/${unHashedToken}`,
@@ -337,7 +334,7 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {},
-        "Password reset mail has been sent to your mail ID",
+        "A new password reset link has been sent to your email.",
       ),
     );
 });
